@@ -368,7 +368,8 @@ BOOL CAsafetyAssistantSystemDlg::OnInitDialog()
 	filePathName = str + filePathName;
 
 	g_File.Open(filePathName, CFile::modeWrite | CFile::modeCreate); // for test
-
+	pWnd = GetDlgItem(IDC_STATIC_ALARMLIGHT);
+	pmDC = pWnd->GetDC();
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 void CAsafetyAssistantSystemDlg::initdata()
@@ -2578,6 +2579,7 @@ void CAsafetyAssistantSystemDlg::OnTimer(UINT_PTR nIDEvent)
 			  switch(alarmLast)
 			  {					
 			  case SAFE:
+				  //InvalidateRect(alarmLamp_rc);
 				  DrawAlarmLight(RGB(0, 255, 0));     // 绿色
 				  break;
 			  case THREAT:
@@ -2593,7 +2595,7 @@ void CAsafetyAssistantSystemDlg::OnTimer(UINT_PTR nIDEvent)
 				  DrawAlarmLight(RGB(255, 255, 0));	// 黄色RGB(255,255,0)
 				  break;
 			  case DANGEROUS:
-				  if (time_count[DANGEROUS] >= 20)
+				  if (time_count[DANGEROUS] >= 10)
 				  {
 					  InvalidateRect(alarmLamp_rc);
 					  KillTimer(TIMER2);
@@ -2605,7 +2607,7 @@ void CAsafetyAssistantSystemDlg::OnTimer(UINT_PTR nIDEvent)
 				  DrawAlarmLight(RGB(255, 0, 0));		// 红色
 				  break;
 			  case GODBLESSYOU:
-				  if (time_count[GODBLESSYOU] >= 80)
+				  if (time_count[GODBLESSYOU] >= 40)
 				  {
 					  InvalidateRect(alarmLamp_rc);
 					  KillTimer(TIMER2);
@@ -2783,19 +2785,23 @@ void CAsafetyAssistantSystemDlg::DrawACar(double Pos_x, double Pos_y, double vel
 void CAsafetyAssistantSystemDlg::DrawAlarmLight(COLORREF cColor)
 {
 	CStatic *pStatic=(CStatic *)GetDlgItem(IDC_STATIC_ALARMLIGHT);//控件ID 
-	CDC *pmDC = GetDlgItem(IDC_STATIC_ALARMLIGHT)->GetDC();
+	
 	CRect tmp_rect;
 	GetDlgItem(IDC_STATIC_ALARMLIGHT)->GetClientRect(&tmp_rect);
 	const int endge_size = 10;
-	CBrush cu;
-	CPen m_pen;
-	cu.CreateSolidBrush(cColor);//绘制警示标志
-	CBrush* oldBrush = pmDC->SelectObject(&cu);
-	m_pen.CreatePen(PS_SOLID, 3, cColor);
-	CPen* oldPen = pmDC->SelectObject(&m_pen);
-	pmDC->Ellipse(tmp_rect.Width()/2-tmp_rect.Height()/2 + endge_size, endge_size, tmp_rect.Width()/2+tmp_rect.Height()/2 - endge_size, tmp_rect.Height() - endge_size);
-	pmDC->SelectObject(oldPen);
-	pmDC->SelectObject(oldBrush);
+
+	if (pmDC != NULL)
+	{
+		CBrush m_cu;
+		CPen m_pen;
+		m_cu.CreateSolidBrush(cColor);//绘制警示标志
+		CBrush* oldBrush = pmDC->SelectObject(&m_cu);
+		m_pen.CreatePen(PS_SOLID, 3, cColor);
+		CPen* oldPen = pmDC->SelectObject(&m_pen);
+		pmDC->Ellipse(tmp_rect.Width()/2-tmp_rect.Height()/2 + endge_size, endge_size, tmp_rect.Width()/2+tmp_rect.Height()/2 - endge_size, tmp_rect.Height() - endge_size);
+		pmDC->SelectObject(oldBrush);
+		pmDC->SelectObject(oldPen);
+	}	
 }
 
 /*
@@ -2807,67 +2813,76 @@ void CAsafetyAssistantSystemDlg::DrawAlarmLight(COLORREF cColor)
 
 int CAsafetyAssistantSystemDlg::Alarm_Algorithm(double alarm_para[6], double v_a, double v_b, double a_b, bool flag, double Sab)
 {
-	double Sp;
-	double Sr;
-	double Se1;
-	double Se2;
-	int rtn;
+	double Sp = -1;
+	double Sr = -1;
+	double Se1 = -1;
+	double Se2 = -1;
+	int rtn = 1;
 	// 预警公式
-	Sp = alarm_para[0] * (v_a * (alarm_para[1] + alarm_para[2] + alarm_para[3]/2) + v_a*v_a/(2*alarm_para[5])) + alarm_para[4];
-
-	Sr = alarm_para[0] * (v_a * (alarm_para[1] + alarm_para[2] + alarm_para[3]/2) + v_a*v_a/(2*alarm_para[5])) + alarm_para[4] + v_b*v_b/(2*alarm_para[5]);
-
-	Se1 = alarm_para[0] * (v_a * (alarm_para[1] + alarm_para[2] + alarm_para[3]/2) + v_a*v_a/(2*alarm_para[5])) + alarm_para[4] + v_b*v_b/(2*a_b);
-
-	Se2 = alarm_para[0] * (v_a * (alarm_para[1] + alarm_para[2] + alarm_para[3]/2) + v_a*v_a/(2*alarm_para[5])) + alarm_para[4] - (v_b + v_a*a_b/alarm_para[5]) * (alarm_para[1] + alarm_para[2] + alarm_para[3]/2)
-		- a_b*(alarm_para[1] + alarm_para[2] + alarm_para[3]/2)*(alarm_para[1] + alarm_para[2] + alarm_para[3]/2)/2
-		- v_a * v_b / alarm_para[5] - a_b*v_a*v_a/(2* alarm_para[5] * alarm_para[5]);
-
-	// 预警流程
-	if (flag) 
+	if(abs(a_b) > 0.2)
 	{
-		if (a_b < 0)
-		{
-			if (Sab > Sp)
-			{
+		Sp = alarm_para[0] * (v_a * (alarm_para[1] + alarm_para[2] + alarm_para[3]/2) + v_a*v_a/(2*alarm_para[5])) + alarm_para[4];
 
-				rtn = SAFE;
-			}
-			else if (Sab > Sr && Sab <= Sp)
-			{
-				rtn = THREAT;
-			}
-			else if (Sab > Se1 && Sab <= Sr)
-			{
-				rtn = DANGEROUS;
-			}
-			else
-			{
-				rtn = GODBLESSYOU;
-			}
-		}
-		else
+		Sr = alarm_para[0] * (v_a * (alarm_para[1] + alarm_para[2] + alarm_para[3]/2) + v_a*v_a/(2*alarm_para[5])) + alarm_para[4] + v_b*v_b/(2*alarm_para[5]);
+
+
+		Se1 = alarm_para[0] * (v_a * (alarm_para[1] + alarm_para[2] + alarm_para[3]/2) + v_a*v_a/(2*alarm_para[5])) + alarm_para[4] + v_b*v_b/(2*a_b);
+
+		Se2 = alarm_para[0] * (v_a * (alarm_para[1] + alarm_para[2] + alarm_para[3]/2) + v_a*v_a/(2*alarm_para[5])) + alarm_para[4] - (v_b + v_a*a_b/alarm_para[5]) * (alarm_para[1] + alarm_para[2] + alarm_para[3]/2)
+			- a_b*(alarm_para[1] + alarm_para[2] + alarm_para[3]/2)*(alarm_para[1] + alarm_para[2] + alarm_para[3]/2)/2
+			- v_a * v_b / alarm_para[5] - a_b*v_a*v_a/(2* alarm_para[5] * alarm_para[5]);
+
+		// 预警流程
+		if (flag) 
 		{
-			if (Sab > Sp)
+			if (a_b < 0)
 			{
-				rtn = SAFE;
-			}
-			else if (Sab > Sr && Sab <= Sp)
-			{
-				rtn = THREAT;
-			}
-			else if (Sab > Se2 && Sab <= Sr)
-			{
-				rtn = DANGEROUS;
+				if (Sab > Sp)
+				{
+
+					rtn = SAFE;
+				}
+				else if (Sab > Sr && Sab <= Sp)
+				{
+					rtn = THREAT;
+				}
+				else if (Sab > Se1 && Sab <= Sr)
+				{
+					rtn = DANGEROUS;
+				}
+				else
+				{
+					rtn = GODBLESSYOU;
+				}
 			}
 			else
 			{
-				rtn = GODBLESSYOU;
+				if (Sab > Sp)
+				{
+					rtn = SAFE;
+				}
+				else if (Sab > Sr && Sab <= Sp)
+				{
+					rtn = THREAT;
+				}
+				else if (Sab > Se2 && Sab <= Sr)
+				{
+					rtn = DANGEROUS;
+				}
+				else
+				{
+					rtn = GODBLESSYOU;
+				}
 			}
-		}
-	} // 如果发现目标
+		} // 如果发现目标
+		else
+			rtn = -1;
+	}
 	else
+	{
 		rtn = -1;
+	}
+
 	
 	//CArchive g_ar(&g_File,CArchive::store);  // for test
 
@@ -2894,6 +2909,31 @@ void CAsafetyAssistantSystemDlg::ShowAlarmLight(int alarmClass)
 	{
 		// do nothing
 	}// 如果新的警报等级小于正在上一次的警报等级,并且上一次的警报仍在执行
+	else if(alarmLast == alarmClass)
+	{
+		time_count[alarmClass] = 0;
+		if(!isAlarmfalg[alarmClass])
+		{
+			KillTimer(TIMER2);
+			switch(alarmClass)
+			{
+			case SAFE:					
+				SetTimer(TIMER2, 1000, NULL);
+				break;
+			case THREAT: 
+				SetTimer(TIMER2, 500, NULL); // 500ms，执行2S，计数器累计4次
+				break;
+			case DANGEROUS:
+				SetTimer(TIMER2, 200, NULL); // 200ms间隔，执行5S，计数器累计25次
+				break;
+			case GODBLESSYOU:
+				SetTimer(TIMER2, 50, NULL); // 200ms间隔，执行5S，计数器累计100次
+				break;
+			default:
+				break;
+			}
+		}
+	}
 	else
 	{
 		alarmLast = alarmClass;  // 保留当前的警报等级

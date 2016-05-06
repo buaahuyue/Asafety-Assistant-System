@@ -237,4 +237,6 @@ public:
 	int alarmLast; // 上一次的警报等级
 
 	CFile g_File;
+
+	CDC *pmDC;
 };
