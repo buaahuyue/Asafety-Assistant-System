@@ -1051,9 +1051,9 @@ void CAsafetyAssistantSystemDlg::OnBnClickedButton5()//连接摄像机
 	//KillTimer(TIMER2);
 	//ShowAlarmLight(DANGEROUS);
 	//::Beep(4000, 1000);
-	double a = 100.0 / 3.6;
-	double b = 80.0 / 3.6;
-	Alarm_Algorithm(alarmPara, a, b, -4, true, 10);
+	//double a = 100.0 / 3.6;
+	//double b = 80.0 / 3.6;
+	//Alarm_Algorithm(alarmPara, a, b, -4, true, 10);
 }
 void CAsafetyAssistantSystemDlg::OnDestroy() 
 {
@@ -2827,7 +2827,7 @@ int CAsafetyAssistantSystemDlg::Alarm_Algorithm(double alarm_para[6], double v_a
 	double Se2 = -1;
 	int rtn = 1;
 	// 预警公式
-	if(abs(a_b) > 0.2)
+	if(abs(a_b) > 0.01)
 	{
 		double factor_a = (alarm_para[1] + alarm_para[2] + alarm_para[3]/2)*(alarm_para[1] + alarm_para[2] + alarm_para[3]/2)/2;
 		double factor_b = (alarm_para[1] + alarm_para[2] + alarm_para[3]/2);
