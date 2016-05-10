@@ -1042,10 +1042,18 @@ void CAsafetyAssistantSystemDlg::OnBnClickedButton5()//连接摄像机
 	GetPrivateProfileString("ConfigInfo","AlarmPara4", "4", tmp_AlarmPara[4].GetBuffer(MAX_PATH),MAX_PATH,sFilePath);
 	GetPrivateProfileString("ConfigInfo","AlarmPara5", "5", tmp_AlarmPara[5].GetBuffer(MAX_PATH),MAX_PATH,sFilePath);
 
-
+	for (int i = 0; i < 6;i++)
+	{
+		float test =  atof(tmp_AlarmPara[i]);
+		alarmPara[i] = atof(tmp_AlarmPara[i]);
+		
+	}
 	//KillTimer(TIMER2);
 	//ShowAlarmLight(DANGEROUS);
 	//::Beep(4000, 1000);
+	double a = 100.0 / 3.6;
+	double b = 80.0 / 3.6;
+	Alarm_Algorithm(alarmPara, a, b, -4, true, 10);
 }
 void CAsafetyAssistantSystemDlg::OnDestroy() 
 {
@@ -2821,16 +2829,17 @@ int CAsafetyAssistantSystemDlg::Alarm_Algorithm(double alarm_para[6], double v_a
 	// 预警公式
 	if(abs(a_b) > 0.2)
 	{
+		double factor_a = (alarm_para[1] + alarm_para[2] + alarm_para[3]/2)*(alarm_para[1] + alarm_para[2] + alarm_para[3]/2)/2;
+		double factor_b = (alarm_para[1] + alarm_para[2] + alarm_para[3]/2);
+
 		Sp = alarm_para[0] * (v_a * (alarm_para[1] + alarm_para[2] + alarm_para[3]/2) + v_a*v_a/(2*alarm_para[5])) + alarm_para[4];
 
-		Sr = alarm_para[0] * (v_a * (alarm_para[1] + alarm_para[2] + alarm_para[3]/2) + v_a*v_a/(2*alarm_para[5])) + alarm_para[4] + v_b*v_b/(2*alarm_para[5]);
+		Sr = Sp - v_b*v_b/(2*alarm_para[5]);
 
+		Se1 = Sr + v_b*v_b/(2*a_b);
 
-		Se1 = alarm_para[0] * (v_a * (alarm_para[1] + alarm_para[2] + alarm_para[3]/2) + v_a*v_a/(2*alarm_para[5])) + alarm_para[4] + v_b*v_b/(2*a_b);
-
-		Se2 = alarm_para[0] * (v_a * (alarm_para[1] + alarm_para[2] + alarm_para[3]/2) + v_a*v_a/(2*alarm_para[5])) + alarm_para[4] - (v_b + v_a*a_b/alarm_para[5]) * (alarm_para[1] + alarm_para[2] + alarm_para[3]/2)
-			- a_b*(alarm_para[1] + alarm_para[2] + alarm_para[3]/2)*(alarm_para[1] + alarm_para[2] + alarm_para[3]/2)/2
-			- v_a * v_b / alarm_para[5] - a_b*v_a*v_a/(2* alarm_para[5] * alarm_para[5]);
+		Se2 = Sp - (v_b - v_a*a_b/alarm_para[5]) * factor_b	+ a_b*factor_a - v_a * v_b / alarm_para[5] 
+		         + a_b*v_a*v_a/(2* alarm_para[5] * alarm_para[5]);
 
 		// 预警流程
 		if (flag) 
